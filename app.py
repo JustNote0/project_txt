@@ -120,6 +120,9 @@ def create_pie_chart(data):
 st.set_page_config(page_title="Analisis Sentimen IMDb", layout="wide", initial_sidebar_state="expanded")
 st.title("Analisis Sentimen Review Film Pada IMDb")
 
+if 'labeled_data' not in st.session_state:
+    st.session_state.labeled_data = None
+
 imdb_link = st.sidebar.text_input("Enter IMDb Reviews URL", "")
 if st.sidebar.button("Analyze"):
     with st.spinner("Scraping reviews..."):
@@ -129,32 +132,32 @@ if st.sidebar.button("Analyze"):
                 st.error("No reviews found. Please check the URL.")
             else:
                 scraped_reviews['Processed_Review'] = preprocess_text(scraped_reviews['review'])
-                labeled_data = labeling_sentiment(scraped_reviews)
-
+                st.session_state.labeled_data = labeling_sentiment(scraped_reviews)
                 st.success("Analysis complete!")
-                st.write("Here is the data table:")
-                st.dataframe(labeled_data)
 
-                csv_data = labeled_data.to_csv(index=False).encode('utf-8')
-                st.sidebar.download_button(
-                    label="Download CSV",
-                    data=csv_data,
-                    file_name="imdb_reviews_sentiment.csv",
-                    mime="text/csv",
-                )
+if st.session_state.labeled_data is not None:
+    labeled_data = st.session_state.labeled_data
+    st.write("Here is the data table:")
+    st.dataframe(labeled_data)
 
-                sentiment_pie = create_pie_chart(labeled_data)
-                st.write("Sentiment Distribution:")
-                st.pyplot(sentiment_pie)
+    csv_data = labeled_data.to_csv(index=False).encode('utf-8')
+    st.sidebar.download_button(
+        label="Download CSV",
+        data=csv_data,
+        file_name="imdb_reviews_sentiment.csv",
+        mime="text/csv",
+    )
 
-                buffer = BytesIO()
-                sentiment_pie.savefig(buffer, format="png")
-                buffer.seek(0)
-                st.sidebar.download_button(
-                    label="Download Pie Chart",
-                    data=buffer,
-                    file_name="sentiment_pie_chart.png",
-                    mime="image/png",
-                )
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+    sentiment_pie = create_pie_chart(labeled_data)
+    st.write("Sentiment Distribution:")
+    st.pyplot(sentiment_pie)
+
+    buffer = BytesIO()
+    sentiment_pie.savefig(buffer, format="png")
+    buffer.seek(0)
+    st.sidebar.download_button(
+        label="Download Pie Chart",
+        data=buffer,
+        file_name="sentiment_pie_chart.png",
+        mime="image/png",
+    )
