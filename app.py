@@ -119,7 +119,6 @@ if "output_ready" not in st.session_state:
     st.session_state.labeled_data = None
 
 # Sidebar
-st.sidebar.title("Input dan Unduh")
 url = st.sidebar.text_input("Masukkan link URL review IMDb")
 if st.sidebar.button("Mulai Analisis"):
     if url:
@@ -146,7 +145,7 @@ if st.sidebar.button("Mulai Analisis"):
 if st.session_state.output_ready:
     labeled_data = st.session_state.labeled_data
 
-    # Sidebar: Tombol Unduh
+    # Tombol Unduh
     st.sidebar.download_button(
         label="Unduh Tabel sebagai CSV",
         data=labeled_data.to_csv(index=False).encode('utf-8'),
