@@ -64,20 +64,20 @@ async def scrape_reviews(base_url):
     return pd.DataFrame(reviews)
 
 # Fungsi preprocessing
-def decontracted(phrase):
-    phrase = re.sub(r"won't", "will not", phrase)
-    phrase = re.sub(r"can\'t", "can not", phrase)
-    phrase = re.sub(r"n\'t", " not", phrase)
-    phrase = re.sub(r"\'re", " are", phrase)
-    phrase = re.sub(r"\'s", " is", phrase)
-    phrase = re.sub(r"\'d", " would", phrase)
-    phrase = re.sub(r"\'ll", " will", phrase)
-    phrase = re.sub(r"\'t", " not", phrase)
-    phrase = re.sub(r"\'ve", " have", phrase)
-    phrase = re.sub(r"\'m", " am", phrase)
-    return phrase
-
 def preprocess_text(text_data):
+    def decontracted(phrase):
+        phrase = re.sub(r"won't", "will not", phrase)
+        phrase = re.sub(r"can\'t", "can not", phrase)
+        phrase = re.sub(r"n\'t", " not", phrase)
+        phrase = re.sub(r"\'re", " are", phrase)
+        phrase = re.sub(r"\'s", " is", phrase)
+        phrase = re.sub(r"\'d", " would", phrase)
+        phrase = re.sub(r"\'ll", " will", phrase)
+        phrase = re.sub(r"\'t", " not", phrase)
+        phrase = re.sub(r"\'ve", " have", phrase)
+        phrase = re.sub(r"\'m", " am", phrase)
+        return phrase
+
     stop_words = set(stopwords.words('english'))
     lemmatizer = WordNetLemmatizer()
     preprocessed_text = []
@@ -117,50 +117,44 @@ def create_pie_chart(data):
     return fig
 
 # Streamlit App
-st.title("Analisis Sentiment Review Film Pada IMDb")
+st.set_page_config(page_title="Analisis Sentimen IMDb", layout="wide", initial_sidebar_state="expanded")
+st.title("Analisis Sentimen Review Film Pada IMDb")
 
-url = st.text_input("Masukkan link URL review IMDb")
-if st.button("Mulai Analisis"):
-    if url:
-        with st.spinner("Tunggu ya, data masih di scraping..."):
-            try:
-                scraped_reviews = asyncio.run(scrape_reviews(url))
-                if len(scraped_reviews) == 0:
-                    st.error("Tidak ada ulasan ditemukan. Pastikan URL yang dimasukkan benar.")
-                else:
-                    data = pd.DataFrame(scraped_reviews)
-                    processed_data = process_scraped_data(data)
-                    labeled_data = labeling_sentiment(processed_data)
+imdb_link = st.sidebar.text_input("Enter IMDb Reviews URL", "")
+if st.sidebar.button("Analyze"):
+    with st.spinner("Scraping reviews..."):
+        try:
+            scraped_reviews = asyncio.run(scrape_reviews(imdb_link))
+            if scraped_reviews.empty:
+                st.error("No reviews found. Please check the URL.")
+            else:
+                scraped_reviews['Processed_Review'] = preprocess_text(scraped_reviews['review'])
+                labeled_data = labeling_sentiment(scraped_reviews)
 
-                    st.success("Analisis komplit!")
-                    st.write("Berikut adalah hasil tabel data:")
-                    st.dataframe(labeled_data)
+                st.success("Analysis complete!")
+                st.write("Here is the data table:")
+                st.dataframe(labeled_data)
 
-                    # Tombol unduh tabel
-                    csv_data = labeled_data.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="Unduh Tabel sebagai CSV",
-                        data=csv_data,
-                        file_name="hasil_analisis.csv",
-                        mime="text/csv",
-                    )
+                csv_data = labeled_data.to_csv(index=False).encode('utf-8')
+                st.sidebar.download_button(
+                    label="Download CSV",
+                    data=csv_data,
+                    file_name="imdb_reviews_sentiment.csv",
+                    mime="text/csv",
+                )
 
-                    # Visualisasi pie chart
-                    st.write("Visualisasi distribusi sentimen:")
-                    pie_chart = create_pie_chart(labeled_data)
-                    st.pyplot(pie_chart)
+                sentiment_pie = create_pie_chart(labeled_data)
+                st.write("Sentiment Distribution:")
+                st.pyplot(sentiment_pie)
 
-                    # Tombol unduh gambar pie chart
-                    buf = BytesIO()
-                    pie_chart.savefig(buf, format="png")
-                    buf.seek(0)
-                    st.download_button(
-                        label="Unduh Pie Chart sebagai PNG",
-                        data=buf,
-                        file_name="pie_chart.png",
-                        mime="image/png",
-                    )
-            except Exception as e:
-                st.error(f"Terjadi kesalahan: {e}")
-    else:
-        st.warning("Masukkan URL terlebih dahulu.")
+                buffer = BytesIO()
+                sentiment_pie.savefig(buffer, format="png")
+                buffer.seek(0)
+                st.sidebar.download_button(
+                    label="Download Pie Chart",
+                    data=buffer,
+                    file_name="sentiment_pie_chart.png",
+                    mime="image/png",
+                )
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
