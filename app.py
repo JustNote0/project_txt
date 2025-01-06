@@ -120,6 +120,7 @@ def create_pie_chart(data):
 st.set_page_config(page_title="Analisis Sentimen IMDb", layout="wide", initial_sidebar_state="expanded")
 st.title("Analisis Sentimen Review Film Pada IMDb")
 
+# Session state setup
 if 'labeled_data' not in st.session_state:
     st.session_state.labeled_data = None
 
