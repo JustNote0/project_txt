@@ -40,8 +40,6 @@ async def scrape_reviews(base_url):
                 break
 
             for card in review_cards:
-                if len(review_urls) >= total_reviews:
-                    break
                 try:
                     user = card.find('ul', class_='ipc-inline-list').li.text.strip()
                     date = card.find('li', class_='ipc-inline-list__item review-date').text.strip()
@@ -94,11 +92,7 @@ def preprocess_text(text_data):
 
     return preprocessed_text
 
-def process_scraped_data(scraped):
-    scraped['Processed_Review'] = preprocess_text(scraped['review'].dropna())
-    return scraped
-
-# Fungsi labeling sentiment menggunakan Textblob
+# Fungsi labeling sentiment menggunakan TextBlob
 def labeling_sentiment(data, text_column='Processed_Review'):
     def classify_review(review):
         polarity = TextBlob(review).sentiment.polarity
@@ -117,48 +111,63 @@ def create_pie_chart(data):
     return fig
 
 # Streamlit App
-st.set_page_config(page_title="Analisis Sentimen IMDb", layout="wide", initial_sidebar_state="expanded")
 st.title("Analisis Sentimen Review Film Pada IMDb")
 
-# Session state setup
-if 'labeled_data' not in st.session_state:
+# State Management
+if "output_ready" not in st.session_state:
+    st.session_state.output_ready = False
     st.session_state.labeled_data = None
 
-imdb_link = st.sidebar.text_input("Enter IMDb Reviews URL", "")
-if st.sidebar.button("Analyze"):
-    with st.spinner("Scraping reviews..."):
-        try:
-            scraped_reviews = asyncio.run(scrape_reviews(imdb_link))
-            if scraped_reviews.empty:
-                st.error("No reviews found. Please check the URL.")
-            else:
-                scraped_reviews['Processed_Review'] = preprocess_text(scraped_reviews['review'])
-                st.session_state.labeled_data = labeling_sentiment(scraped_reviews)
-                st.success("Analysis complete!")
+# Sidebar
+st.sidebar.title("Input dan Unduh")
+url = st.sidebar.text_input("Masukkan link URL review IMDb")
+if st.sidebar.button("Mulai Analisis"):
+    if url:
+        with st.spinner("Tunggu ya, data masih di scraping..."):
+            try:
+                scraped_reviews = asyncio.run(scrape_reviews(url))
+                if scraped_reviews.empty:
+                    st.error("Tidak ada ulasan ditemukan. Pastikan URL yang dimasukkan benar.")
+                else:
+                    data = pd.DataFrame(scraped_reviews)
+                    processed_data = preprocess_text(data['review'])
+                    data['Processed_Review'] = processed_data
+                    labeled_data = labeling_sentiment(data)
 
-if st.session_state.labeled_data is not None:
+                    st.session_state.output_ready = True
+                    st.session_state.labeled_data = labeled_data
+
+                    st.success("Analisis komplit!")
+            except Exception as e:
+                st.error(f"Terjadi kesalahan: {e}")
+    else:
+        st.warning("Masukkan URL terlebih dahulu.")
+
+if st.session_state.output_ready:
     labeled_data = st.session_state.labeled_data
-    st.write("Here is the data table:")
-    st.dataframe(labeled_data)
 
-    csv_data = labeled_data.to_csv(index=False).encode('utf-8')
+    # Sidebar: Tombol Unduh
     st.sidebar.download_button(
-        label="Download CSV",
-        data=csv_data,
-        file_name="imdb_reviews_sentiment.csv",
+        label="Unduh Tabel sebagai CSV",
+        data=labeled_data.to_csv(index=False).encode('utf-8'),
+        file_name="hasil_analisis.csv",
         mime="text/csv",
     )
 
-    sentiment_pie = create_pie_chart(labeled_data)
-    st.write("Sentiment Distribution:")
-    st.pyplot(sentiment_pie)
-
+    pie_chart = create_pie_chart(labeled_data)
     buffer = BytesIO()
-    sentiment_pie.savefig(buffer, format="png")
+    pie_chart.savefig(buffer, format="png")
     buffer.seek(0)
     st.sidebar.download_button(
-        label="Download Pie Chart",
+        label="Unduh Pie Chart sebagai PNG",
         data=buffer,
-        file_name="sentiment_pie_chart.png",
+        file_name="pie_chart.png",
         mime="image/png",
     )
+
+    # Tampilkan hasil
+    st.write("Berikut adalah hasil tabel data:")
+    st.dataframe(labeled_data)
+
+    st.write("Visualisasi distribusi sentimen:")
+    st.pyplot(pie_chart)
