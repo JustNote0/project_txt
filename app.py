@@ -165,8 +165,8 @@ if st.session_state.output_ready:
     )
 
     # Tampilkan hasil
-    st.write("Berikut adalah hasil tabel data:")
+    st.write("Ini hasil tabel datanya:")
     st.dataframe(labeled_data)
 
-    st.write("Visualisasi distribusi sentimen:")
+    st.write("Ini visualisasi distribusi sentimennya:")
     st.pyplot(pie_chart)
