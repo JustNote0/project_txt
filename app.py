@@ -35,7 +35,7 @@ async def scrape_reviews(base_url):
         while len(review_urls) < total_reviews:
             content = await fetch(session, f"{base_url}?paginationKey={page}")
             soup = BeautifulSoup(content, 'html.parser')
-            review_cards = soup.find_all('article', class_='sc-d99cd751-1 kzUfxa user-review-item')
+            review_cards = soup.find_all('article', class_='sc-c3a48f51-1 ffoiMB user-review-item')
             if not review_cards:
                 break
 
